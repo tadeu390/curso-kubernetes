@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Pod #tipo do recurso
+
+metadata:
+  name: pod-apache # 10.244.0.34
+
+spec: # Especificações referente ao pod que será criado
+  containers:
+  - name: my-apache
+    image: httpd
+---
+apiVersion: v1
+kind: Pod #tipo do recurso
+
+metadata:
+  name: pod-nginx # 10.244.0.33
+
+spec: # Especificações referente ao pod que será criado
+  containers:
+  - name: my-nginx
+    image: nginx

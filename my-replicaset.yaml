@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: ReplicaSet #tipo de recurso
+metadata:
+  name: frontend-rs
+  labels:
+    app: frontend
+
+spec: # Especificações referente ao pod que será criado
+  template:
+    metadata: ##metadata referente ao pod
+      name: my-pod-webserver
+      labels:
+        apps: my-app
+        tier: frontend
+    spec: # Especificações referente ao container do pod que será criado
+      containers:
+      - name: my-container-nginx
+        image: nginx
+
+  selector: #seleciona o pod para criar replicas através da label do pod
+    matchLabels:
+     apps: my-app
+  replicas: 10 # Especifica a quantidade de replicas do pod

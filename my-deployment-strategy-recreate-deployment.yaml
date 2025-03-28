@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment # tipo de recurso do k8s
+metadata:
+  name: frontend-deployment
+  labels:
+    app: frontend
+
+spec:
+  template:
+    metadata:
+      name: pod-my-nginx
+      labels:
+        env: production
+    spec:
+      containers:
+      - name: nginx-container
+        image: nginx:1.14.2
+
+  selector:
+    matchLabels:
+      env: production
+  strategy:
+    type: Recreate
+# o deployment cria o replicaset por default
+  replicas: 5

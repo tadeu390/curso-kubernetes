@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace # tipo de recurso
+
+metadata:
+  name: backend-ns
+  labels:
+    apps: backend-apps

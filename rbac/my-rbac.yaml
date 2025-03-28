@@ -1,0 +1,31 @@
+apiVersion: rbac.authorization.k8s.io/v1
+
+kind: Role
+
+metadata:
+  namespace: default
+  name: auditor-role
+
+rules:
+- apiGroups: [""] #define que a role será aplicado ao api group do k8s/api server
+  resources: ["pods", "services"] #Define quais recursos a role fornece acesso
+  verbs: ["get", "list", "watch"] #nível de acesso
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+
+kind: RoleBinding
+
+metadata:
+  namespace: default
+  name: auditor-rb
+
+subjects:
+- kind: User
+  name: auditor
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: auditor-role
+  apiGroup: rbac.authorization.k8s.io

@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Pod
+
+metadata:
+  name: liveness-pod
+
+spec:
+  containers:
+    - name: liveness-container-test
+      image: busybox # imagem que tem diversas ferramentas de linha de comando
+      args:
+      - /bin/sh
+      - -c
+      - touch /tmp/healthy; sleep 30; rm -f /tmp/healthy; sleep 600
+      #daqui pra baixo o livenessprobe entra em ação
+      # abaixo ele está executando comandos a fim de verificar a saúde do pod
+      livenessProbe:
+        exec:
+          command:
+          - cat
+          - /tmp/healthy
+        initialDelaySeconds: 5 #aguarda 5 segundos para iniciar as verificações, pra dar tempo do container subir.
+        periodSeconds: 5 #Executa a verificação a cada 5 segundos
+        failureThreshold: 3 #Número de tentativas que fará a execução caso a verificação falhe em algum momento
+        #se estourar o número de tentativas, o kubelete irá reiniciar o container

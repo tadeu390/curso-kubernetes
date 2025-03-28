@@ -1,0 +1,28 @@
+apiVersion: batch/v1
+kind: CronJob
+
+metadata:
+  name: my-cronjob
+
+spec:
+#  suspend: true
+  failedJobsHistoryLimit: 5 #Limita a quantidade de jobs com falha
+  successfulJobsHistoryLimit: 10 #Limita a quantidade de jobs com sucesso
+  schedule: "* * * * *" #a cada minuto
+  jobTemplate:
+    spec:
+#      completions: 10 # Realiza múltiplas execuções, onde cada execução resulta na criação de um novo pod. Por default cria um 1 pod só, parâmetro oopcional
+#      completionMode: "Indexed" #Cria um índice para o nome dos pods, de modo que seja possível verificar a ordem de criação de cada pod. Parametro opcional
+#      parallelism: 5
+      template:
+        metadata:
+          name: my-job-pod
+        spec:
+          containers:
+            - name: my-container-busybox
+              image: busybox
+              command:
+              - "bin/sh"
+              - "-c"
+              - "for i in 1 2; do echo Lucky number $i = $((1 + RANDOM % 70)); done"
+          restartPolicy: Never #não reinicia o container

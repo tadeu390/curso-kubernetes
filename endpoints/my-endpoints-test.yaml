@@ -1,0 +1,27 @@
+apiVersion: v1
+
+kind: Endpoints
+
+metadata:
+  name: my-endpoints-service
+
+subsets:
+  - addresses:
+      - ip: 77.68.88.76 #servidor externo
+      - ip: 10.244.0.34 #apache
+      - ip: 10.244.0.33 #nginx
+    ports:
+      - port: 80
+---
+apiVersion: v1
+
+kind: Service
+
+metadata:
+  name: my-endpoints-service
+
+spec:
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80

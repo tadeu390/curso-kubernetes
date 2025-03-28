@@ -1,0 +1,298 @@
+Instalação Kubectl(pacot que permite enviar comandos para o cluster kubernetes)
+curl -LO https://dl.k8s.io/release/v1.24.2/bin/linux/amd64/kubectl
+sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+kubectl version --client --output=yaml
+
+Instalação minikube(cluster kubernetes)
+curl -Lo minikube https://storage.googleapis.com/minikube/releases/v1.26.0/minikube-linux-amd64
+chmod +x minikube
+sudo install minikube /usr/local/bin/
+minikube start -> Inicia o minikube
+minikube stop -> Para o minikube
+
+devops -> cultura para desenvolvimento de sistemas utilizando ferramentas como o kubernetes e entre outras.
+k8s -> Acrônimo para Kubernetes
+princípio da infra imutável -> Nas atualizações se troca os objetos antigos por objetos novos, isso permite retornar a versão antiga que já era consolidada se precisar
+nodes ou workers nodes -> ambientes de processamento do kubernetes
+control plane -> Gerencia todo o ambiente do kubernetes.
+pod -> Contém um mais conteineres docker, porém o ideal é ter apenas 1 conteiner por pod
+    é um recurso para o kubenentes. É a menor unudade computacional que se pode criar e gerenciar
+    os containeres em cada pod compartilham recursos de hardware, etc.
+yaml -> linguagem de serialização de dados, similar ao json, porém mais fácil de ler para os seres humanos. Foi inspirado pelo C, html, xml, etc
+
+prática
+Forma imperativa(sem uso de yaml, direto no terminhal)
+kubectl get pods -> Lista todos os conteineres do namesace default
+kubectl get pods --all-namespaces -> Lista todos os conteineres de todos os namespaces
+kubectl run my-pod-apache-server --image httpd -> cria um pod contendo um conteiner do apache
+kubectl get pods -o wide -> lista os pods contendo mais detalhes sobre os pods
+kubectl delete pods my-pod-apache-server -> remove um pod especificando o nome
+kubectl delete --all pods -> Remove todos os pods criados
+
+Forma arquivo de manifestos
+kubectl create -f my-pod.yaml -> cria os recursos necessários através do arquivo de manifestos
+kubectl apply -f my-pod.yaml -> cria os recursos necessários através do arquivo de manifestos
+
+Replicaset -> controla a quantidade de pods, podendo aumentar  ou diminuir
+kubectl get replicasets -> Lista todas as replicas sets criadas
+kubectl delete replicasets frontend-rs -> Remove um replicaset em especifico
+kubectl scale replicasets frontend-rs --replicas=5 -> scale up or down para replicas de forma imperativa(direto no terminal). Para funcionar, o replaceset frontend-rs precisa estar executando
+
+kubectl delete --all pods -> Remove todos os pods
+watch kubectl get pods -> watch, comando do linux que fica repetindo o comando kubectl a cada 2 segundos
+
+Deployments -> faz a implantação da aplicação
+    -> Estrategia default do k8s rolling updates(rolling releases)
+    -> Executa a atualização baseado em um percentual de indisponibilidade de pods
+    -> Por default tem no máximo 25% de indisponibilidade do total de pods rodando.
+    -> Ex.: se tenho 4 pods vinculado a um deployment, a atualização é feita 1 por 1, logo, terei no mínimo 3(75%) pods rodando(status running) enquanto a atualização ocorre
+    -> Outra forma é a recreate deployment. Isso pode ocasionar indisponibilidade total enquanto durar o deploy, somente usado em alguns casos.
+    -> Recreate deployment vai parar todos os pods e então subir todos os pods atualizados.
+    -> Rollback, pode fazer com ambas as estratégias.
+    -> Usando rolling updates, durante a atualização, o kubernetes começa pelos pods com menos usuários
+    -> k8S só avança para o próximo pod quando conseguir fazer a primeira atualização com sucesso.
+
+Ao criar pods com deployment, automaticamente é criado um replicaset que lança os pods na quantidade desejada
+
+kubectl rollout status deployment.apps/frontend-deployment -> Usado para mostrar o status de um rollout de um deployment. Ele mostra
+o status atual do deployment, isto é, se está em progresso ou não, se possui erros.
+
+kubectl describe deployment.app/frontend-deployment -> Mostra todos os detalhes sobre o deployment.
+
+kubectl get all -> Mostra todos os recursos do kubernetes que foram criados(pods, deployment, replicaset, etc)
+
+kubectl delete deployments frontend-deployment -> Remove um deployment que, consequentemente remove replcasets e pods
+
+kubectl rollout history deployment.apps/frontend-deployment -> Mostra um histórico/revisão/versão do deployment. Quando há alterações
+no projeto, o número da revisão é incrementado(trocar apenas as quantidade de replicas, não gera nova revisão)
+    -> Quando se aplica um arquivo de configuração que resulta numa revisao indentica a uma revisão que existia antes, o k8s remove a revisão antiga da lista e mantém a mais recente
+
+kubectl rollout history deployment.apps/frontend-deployment --revision=2 -> Mostra deltalhes dos pods em uma revisão de especifica de um determinado deployment
+kubectl apply -f my-deployment.yaml --record -> Aplica normalmente as configurações no cluster, entretanto ao usar --record
+o comando aparece na coluna change-cause quando executamos o comando rollout history acima. Isso está marcado como deprecated,
+não é recomendado utilizar
+
+kubectl rollout undo deployment.apps/frontend-deployment -> Realiza rollback para a revisão anterior do deployment
+kubectl undo deployment.apps/frontend-deployment --to-revision=6 -> Realiza rollback para uma revisão específica
+kubectl rollout pause deployment.apps/frontend-deployment -> Pausa a atualização dos pods pelo deployment
+kubectl rollout resume deployment.apps/frontend-deployment -> Continua a atualização dos pods pelo deployment
+kubectl scale deployment.apps/frontend-deployment --replicas=11 -> Aumenta o numero de replicas dos pods através do deployment
+
+Network
+- Cada pod tem um endereço de ip único, atribuído automaticamente pelo k8S. Todos os containeres dentro de um pod, compartilham
+de um mesmo endereço de ip, porém usam portas diferentes.
+
+Kubernetes tem dois tipos de rede:
+    intra node pod comunication -> comunicação entre pods  estando todos no mesmo node
+    inter node pod comunication -> comunicação entre pods estando em nodes diferentes
+
+kubectl exec -it tomcat-pod -- bash -> Acessa um container que está dentro do pod
+kubectl exec -it tomcat-pod -c container-tomcat -- bash -> Acessa um container especifico de um pod
+o "--" presente nos comandos é pra separar os argumentos do kubectl dos comandos a serem executados dentro do container.
+Isso evita problemas ao executar comandos dentro do container.
+
+namespaces
+- Recurso utilizado para fazer uma organização lógica dentro do cluster. É um mecanismo para isolar um grupo de recursos dentro
+de um mesmo cluster
+    ex.: podemos ter namesace para frontend, backend, banco-de-dados, etc
+    Dentro do namespace temos pods, deployments, replicasets, etc.
+- os nomes dos recursos precisam ser exclusivos por namespace
+- Objetos que pertencem ao cluster não podem ser separados por namesace, pois pertencem ao cluster, são de um nível global
+- namesace não pode ser aninhado um dentro do outro
+
+namespaces padrão do k8S
+- kube-node-lease -> Utilizado pelo kubeletes para fazer as suas verificações no cluster.
+- kube-public -> Reservado para uso do cluster caso alguns recursos devam ser legíveis e visiveis em todo o cluster. O admn
+de do kubernetes, também pode colocar recursos aí caso queira.
+- kube-system -> Recursos que fazem parte do funcionamento principaldo cluster como o etcd, proxy, etc.
+
+kubectl get namespaces -> Lista todos os namespaces existentes
+kubectl get ns -> Lista todos os namespaces existentes
+kubectl get pods -n default -> Listando pods por namesace
+kubectl create namespace frontend --save-config -> Cria um novo namesace
+kubectl apply -f tomcat-pod.yaml --namespace=frontend -> Criando pod em um namesace específico
+kubectl config set-context --current --namespace=frontend -> Define como padrão o namesace especificado
+    -> Isso afeta o cluster todo, logo, a partir daí, qualquer coisa criada ou acessada seja pelo terminal ou arquivo yaml é afetado
+kubectl delete pods my-pod-apache --namespace=frontend -> Remove um pod especificando o namesace no qual ele se encontra
+kubectl delete namespace frontend -> Remove o namespace frontend
+kubectl delete ns backend-ns -> Remove o namespace backend-ns
+
+services
+    Expoem a as aplicações para serem acessadas apenas de dentro ou tbm de fora do cluster
+    tipos de servços: clusterIp, nodePort
+
+    ClusterIP -> Usado pra acessos internos dentro do proprio cluster(da pra acessar de fora, mas precisaria de um proxy).
+    O ideal mesmo é usa-lo apenas acessos internos, para acessar de fora existe outro serviço focado nisso falado mais adiante.
+    Pods possuem endereços ips dinâmicos.
+    kubectl get services -> Lista todos os services criados
+    kubectl get services -> Lista todos os services criados
+    kubectl run -it debian-pod --image=debian bash -> Cria um pod com o debian e o acessa na sequência pelo terminal
+    kubectl get svc --all-namespaces -o wide -> Lista todos os services criados com mais detalhes
+    kubectl describe services frontend-service -> Lista detalhes sobre um service em especifico
+    kubectl get svc frontend-service --namespace=default -> lista serviços por namesace
+    kubectl get svc frontend-service --namespace=default -o wide -> lista detalhes sobre um service em especifico através de um namesace
+    kubectl delete services frontend-service --namespace=default -> Remove o service(mas não remove os pods)
+    kubectl delete pods debian-pod web-pod -> Remove todos os pods numa única linha de comando
+    kubectl delete all --all -> Remove todos os recursos do cluster no namesace corrente
+        -> o primeiro all apaga recursos comuns como pods, services, etc
+        -> o segundo all(--all) apaga todos os recursos nomeados do cluster. Tomar cuidado com esse comando.
+    kubectl delete all --all --namespace=default -> Remove todos os recursos do cluster no namesace default
+    kubectl delete all --all --all-namespaces -> Remove todos os recursos do cluster de todos os namespaces. Comando mais perigoso
+
+    node port service
+        -> Permite acesso as aplicações do cluster pelo mundo externo
+    minikube service --url frontend-service-nodeport -> obtém a url pra acessar o serviço, criando um proxy que redireciona o
+    tráfego pra dentro do serviço
+    kubectl get nodes -o yaml | grep address -> obtém o endereço ip do node sem precisar do comando minikube acima.
+    caso não estiver conseguindo acessar, reinicia o minikube, pq ao fazer isso deu certo
+
+    loadbalancer
+
+    externalName Service
+     - Permite com que as aplicações do cluster acesse serviços fora do cluster(BD por exemplo)
+
+    Liveness Probes -> Recurso do k8s que permite verificar a saúde da aplicação. São testes contínuos que
+    o kubelete executa para verificar a saúde de uma aplicação
+
+    Gerenciamento de recursos
+    Requets de recursos -> mínimo necessário para a aplicação
+    Recursos kubernetes são requisitados por container e não por pod
+    Escalador k8s -> Garante que as somatórias das requisições de recursos de todos os pods, não exceda a quantidade disponível no node
+    Limits -> máximo de recurso a ser utilizado
+
+    Volumes
+        - Efêmeros(apenas dentro do container) e persistentes
+        - Possui diversos tipos de volumes, muito mais do que os tipos do docker.
+        Tipos
+            - emptyDir, não é apagado com restart do container, apenas é apagado quando se remove o pod. Amplamente utilizado para cache
+            - tmpfs(temporary file system) -> sistema de arquivo com suporte de RAM. É armazando na memória RAM, é um volume
+            extremamente de rápido acesso, entretanto consome memória ram obviamente.
+            - hostPath -> Persistente, permanece mesmo quando se remove o pod. Os arquivos são armazenados no disco do worker node
+        - Volumes fazem parte da especificação do pod e não do(s) container(s) em si
+
+    DaemonSets
+     - Programa executado continuamente em segundo plano em um SO multi-tarefa
+     - Estão fortemente ligados ao node, ao que ocorre em um node especifico, onde os pods criados pelo deaon foram atribuídos
+     - o objetivo é garantir que cada node receba um pod atribuído pelo daemonSet(não é garantido quando usamos apenas deployment ou replcasets)
+     - é muito utilizado para coletar logs, pra fzer monitoração, pra detectar invasão nos nodes, etc.
+      Em outras palavras, servem para atribuções que precisam rodar em cada node do cluster
+    - Escalador de daemonSet -> Garante que criará uma copia do pod em cada node do cluster
+    kubectl get ds -> Lista todos os damonSets
+    kubectl get nodes -> Lista todos os nodes do cluster
+    minikube node add -> Adiciona mais um node no cluster
+    kubectl get pods -o wide --field-selector spec.nodeName=minikube-m02 -> Lista pods por node específico
+    OBS.:
+    BUG DO MINIKUBE -> ERRO QUANDO RODA MINIKUBE START QUANDO SE TEM MAIS DE UM NODE, QUANDO ISSO OCORRER, EXECUT
+    MINIKUBE DELETE PRA RESETAR O CLUSTER TODO(PROBLEMA RARO DE ACONTECER)
+    minikube start --nodes 3 -> Criar um cluster novo com 3 nodes
+    kubectl delete ds my-daemonset --cascade=orphan -> Apaga o daemonset mas deixa os pods rodando(órfãos de um ds)
+    kubectl get nodes --show-labels -> Lista os nodes com as suas labels
+    kubectl label nodes minikube-m03 disktype=ssd -> Adiciona uma label especifica a um determinado node
+    kubectl delete -f specific-node-pod.yaml -> outra forma para deletar recursos kubernetes
+    kubectl label nodes minikube-m03 disktype- -> comando remover a label(no final tem o hífen mesmo)
+    minikube node delete minikube-m02 -> Remove nodes do kubernetes
+    kubectl get ds/my-daemonset -o go-template='{{.spec.updateStrategy.type}}{{"\n"}}' -n default
+RollingUpdate -> comando para verificar estratégia de atualização de um daemonSet
+    kubectl get ds/my-daemonset -o go-template='{{.spec.updateStrategy.rollingUpdate.maxUnavailable}}{{"\n"}}' -n default -> comando para verificar o máximo de indisponibilidade durante a atualização
+    - No daemonSet a estratégia de atualização OnDelete, não atualiza automaticamente os pods quando aplica-se a configuração. O daemonSet
+    só atualiza quando o pod for derrubado manualmente.
+
+    Jobs
+    - Utilizado criar serviços de curta duração. Ele cria pods e monitora até que o pod finalize sua tarefa
+    kubectl get jobs -> Lista todos os jobs
+    - Job Controller é o recurso do k8s que monitora os jobs
+    kubectl logs my-job-x9s48 -> Mostra os logs emitidos pelos containeres do pod
+    kubectl get jobs --watch -> Vai registrando um histórico na tela para a saída do comando toda vez que é executada
+    kubectl get jobs my-job --output yaml -> Pega dados de execução do job. Isso acessa o arquivo yaml completo
+    composto por valores que eu coloquei + atributos com valores definidos pelo proprio k8s. Além disso, o k8s atualiza
+    esse arquivo após finalizado, contendo todos os atributos que o compõe, além de atributos que indicam coisas relacionadas a execução
+
+    Cron job
+    - Agendamento de tarefas
+    - O cron job cria um job e o job cria o pod
+    - 1.21 k8s a partir dela é a versão mais completa que contém o cronjob
+    schedule: ***** ou ?????(da esquerda pra direita)
+    * -> minuto(0 a 59)
+    * -> hora (0 a 23)
+    * -> dia(1 a 31)
+    * -> mes (1 a 12)
+    * -> dia da semana(0 - 7, domingo pode ser representado com 0 ou 7), pode usar o nome do dia da semana em ingles com as primeiras 3 letras
+    Quando estiver * ou ? quer dizer que é qualquer valor disponível, tipo executará em todos os dias, meses, etc
+    - Quando está executando o cron job, os jobs e pods ficam no histórico de execução, mas por padrão o k8s mantém apenas os três últimos executados. Da pra personalizar esse histórico isso.
+    kubectl get cj -> Lista todos os cron jobs
+    - Basicamente, tudo o que usamos em jobs, podemos utilizar nos cronjobs
+
+    ConfigMap
+    - Recurso para configurar a aplicação. Variáveis de ambiente
+    kubectl get cm -> Lista todos os configMaps
+    kubectl get events -> Comando listar eventos do clustar k8s
+    - Toda vez que alterar o configMap, precisa reiniciar o container pra aplicar, só alterar o configmap e aplicar, não atualiza o container
+    - kubectl create cm my-cm --from-file=my-app-file.txt --from-literal=my-description=testing -> Cria um configmap a partir de um arquivo de parametros.
+    o literal no comando acima, adiciona um parametro/variavel diretamente da linha de comando
+
+    Secrets
+    - Recurso para armazenar dados sensíveis, como senhas, tokens, etc
+    echo -n 'admin' | base64 -> gerar base 64 pelo terminal linux
+    echo -n 'YWRtaW4=' | base64 --decode -> descodifica base64
+    kubectl get secret -> Lista todos os secrets
+    - Cada secret é limitado a 1024KB
+    - built-in type default é o Opaque
+        Existem o tipo basic-auth, tls, ssh etc. Basicamente ele padroniza o nome de certas variaveis de ambiente como username, password. Obrigando a declarar elas exatamente desta forma como foi escrito.
+    
+    StateFulSet
+     -> Mantém o estado do pod(através dos volumes), da pra acessar cada pod atraves do dns local do k8s(ip pode mudar), ou seja, mantém sua identidade de rede. Os nomes são sequenciais.
+     Além disso garante que cada pod continue com o mesmo contéudo armazenado no volume. Tipo o pod 1 é atualizado e mantém este nome e tbm o conteúdo dele armazenado no respectivo volume.
+     Cada pod terá seu proprio volume
+     kubectl get statefulset -> Lista todos os statefulset
+     kubectl delete pods my-sts-0 my-sts-1 my-sts-2 -> Delete mais de um pod na mesma linha de comando
+     nslookup svc-sts -> Lista o dns pra acessar um determinado service, no caso svc-sts
+     kubectl get pv -> Lista todos os volumes persistentes
+     - storage class -> tipo de armazenamento de dados utilizado
+     - kubectl get pvc > Lista os persistentes volume claim e o volume com o qual está linkado
+     - Mesmo ao fazer scaleDown os volumes ainda permanecem criados com os arquivos criados
+     - kubectl delete sts my-sts -> Rempve o statefulset. Remove todos de uma vez, não faz em ordem assim como ocorre com scale up ou scale down
+     - Não é possível remover pvc que esteja ligado a um pod em execução
+       Não é possível apagar o pv que esteja vinculado ao pvc
+       Em resumo, se um objeto de armazenamento estiver em uso, o k8s não permite apaga-lo
+    kubectl delete pvc my-pv-my-sts-4 -> Remove um pvc
+    - RECLAIM POLICY do pv é delete por default, ou seja, quando vc deleta um pvc, automaticamente o pv é deletado. é possível alterar isso
+    para que a deleção do volume seja manual
+    - Na ordem de deleção é sempre a pvc e depoi o pv.(pod, pvc, pv)
+    kubectl delete pvc --all -> Deleta todos os pvc
+    kubectl delete pv pvc-20252653-bcad-4195-80af-3b9de380bd7b -> Deleta um pv
+
+    Endpoints
+    - Destino de um serviço
+    - Armazena 1 ou vários endereços ips e portas dos endpoints como endereçamento de bd, nginx, enderesços externos etc
+    kubectl get endpoints -> Lista todos os endpoints
+    - Em resumo, através de um service da pra acessar vários serviços mapeados no endpoint(parece que da pra usar como balanceador de carga)
+
+    Endpointsslice
+    - Evolução dos endpoints
+    - É mais escalável
+    - Voltado para clusters gigantescos, onde endpoints v1 tinha limitações  
+    - Recursos novos
+    - K8s implementa um endpoint por padrão
+
+    RBAC -> Controle de acesso baseado em perfis de acesso
+    - K8s não tem sistema de autenticação proprio, precisando de terceiros para ele se conectar
+    - Role -> perfil
+    - Rolebinding -> Vinculações de perfis (por namesace)
+    - ClusterRole -> perfil que se aplica a todo cluster
+    - ClusterRoleBinding -> vinculações de perfis de todo o cluster
+
+    Projeto
+    kubectl port-forward jupyter-dp-7db5579d8d-hkjsp 8080:8888 -> Cria um ponto de acesso para o container do cluster k8s
+    kubectl expose deployment jupyter-dp --type=NodePort --name=jupyter-svc -> Expõe o deployment e cria o serviço de nodePort
+    kubectl expose deployment jupyter-dp --type=NodePort --name=jupyter-svc --dry-run=client -> Simula o comando descrito acima adicionando a opcao --dry-run
+    - a opção dry-run pode ser utilizado em vários outros comando para simular se está tudo certo antes de realmente executar a quente
+    kubectl get svc jupyter-svc -o yaml -> obtém o arquivo yaml gerado(poder usar a opção json tbm)
+    KUBE_EDITOR="nano" kubectl edit service jupyter-svc -> edita arquivos yaml de um componente do k8s e tbm seta o editor de texto para isso
+    kubectl set image deployment/jupyter-dp jupyter-container=jupyter/minimal-notebook:python-3.10 -> Atualiza a imagem utilizada pelo pod
+        jupyter-container=jupyter/minimal-notebook:python-3.10 -> jupyter-container é o nome do container dado no arquivo de deployment
+    kubectl rollout status deployment/jupyter-dp -> Mostra o status de atualização do deployment
+    kubectl rollout undo deployment/jupyter-dp -> Retorna os pods para a versão anterior
+
+    Extras
+        minikube dashboard -> abre o dash do kubernetes no minikube
+        minikube service jupyter-svc -n jupyter -> lança o app vinculado ao serviço no navegador
